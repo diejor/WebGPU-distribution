@@ -46,43 +46,57 @@ else (EMSCRIPTEN)
 	# This is used to advertise the flavor of WebGPU that this zip provides
 	target_compile_definitions(webgpu INTERFACE WEBGPU_BACKEND_WGPU)
 
-	if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-
-		set(WGPU_RUNTIME_LIB ${WGPU}/bin/windows-${ARCH}-msvc/wgpu_native.dll)
-		set_target_properties(
-			webgpu
-			PROPERTIES
-				IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
-				IMPORTED_IMPLIB "${WGPU_RUNTIME_LIB}.lib"
-				INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
-		)
-
-	elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-
-		set(WGPU_RUNTIME_LIB ${WGPU}/bin/linux-${ARCH}/libwgpu_native.so)
-		set_target_properties(
-			webgpu
-			PROPERTIES
-				IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
-				IMPORTED_NO_SONAME TRUE
-				INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
-		)
-
-	elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-
-		set(WGPU_RUNTIME_LIB ${WGPU}/bin/macos-${ARCH}/libwgpu_native.dylib)
-		set_target_properties(
-			webgpu
-			PROPERTIES
-				IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
-				INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
-		)
-
-	else()
-
-		message(FATAL_ERROR "Platform not supported by this release of WebGPU. You may consider manually downloading the appropriate release zip or building it yourself from its source (see https://github.com/gfx-rs/wgpu-native)")
-
+    if (NOT ARCH)
+		set(SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
+		if (SYSTEM_PROCESSOR STREQUAL "AMD64" OR SYSTEM_PROCESSOR STREQUAL "x86_64")
+			if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+				set(ARCH "x86_64")
+			elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
+				set(ARCH "i686")
+			endif()
+		elseif (SYSTEM_PROCESSOR STREQUAL "arm64")
+			set(ARCH "aarch64")
+		endif()
 	endif()
+
+    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        set(WGPU_RUNTIME_LIB "${WGPU}/bin/windows-${ARCH}-msvc/wgpu_native.dll")
+        set(LIBRARY_INSTALL_NAME "wgpu_native.dll")
+        set_target_properties(webgpu PROPERTIES
+            IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
+            IMPORTED_IMPLIB "${WGPU_RUNTIME_LIB}.lib"
+            INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(WGPU_RUNTIME_LIB "${WGPU}/bin/linux-${ARCH}/libwgpu_native.so")
+        set(LIBRARY_INSTALL_NAME "libwgpu_native.so")
+        set_target_properties(webgpu PROPERTIES
+            IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
+            IMPORTED_NO_SONAME TRUE
+            INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
+        )
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        set(WGPU_RUNTIME_LIB "${WGPU}/bin/macos-${ARCH}/libwgpu_native.dylib")
+        set(LIBRARY_INSTALL_NAME "libwgpu_native.dylib")
+        set_target_properties(webgpu PROPERTIES
+            IMPORTED_LOCATION "${WGPU_RUNTIME_LIB}"
+            INTERFACE_INCLUDE_DIRECTORIES "${WGPU}/include"
+        )
+    else()
+        message(FATAL_ERROR "Platform not supported by this release of WebGPU. You may consider manually downloading the appropriate release zip or building it yourself from its source (see https://github.com/gfx-rs/wgpu-native)")
+    endif()
+
+	message(STATUS "Using WebGPU runtime from '${WGPU_RUNTIME_LIB}'")
+	set(WGPU_RUNTIME_LIB ${WGPU_RUNTIME_LIB} PARENT_SCOPE)
+	set(WGPU_RUNTIME_LIB ${WGPU_RUNTIME_LIB} CACHE INTERNAL "Path to the WebGPU library binary")
+
+    include(GNUInstallDirs)
+
+    install(
+        FILES "${WGPU_RUNTIME_LIB}"
+        DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        RENAME "${LIBRARY_INSTALL_NAME}"
+    )
 
 	message(STATUS "Using WebGPU runtime from '${WGPU_RUNTIME_LIB}'")
 	set(WGPU_RUNTIME_LIB ${WGPU_RUNTIME_LIB} PARENT_SCOPE)
