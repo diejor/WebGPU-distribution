@@ -3,6 +3,8 @@ project(webgpu-backend-wgpu VERSION 1.0.0)
 
 message(STATUS "Using wgpu-native backend for WebGPU")
 
+set(WEBGPU_BACKEND_WGPU ON)
+
 if (EMSCRIPTEN)
 
 	add_library(webgpu INTERFACE)
